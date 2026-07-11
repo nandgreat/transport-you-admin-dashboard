@@ -15,7 +15,7 @@ import { ConfirmDialog } from "@/components/ui/confirm";
 import { ScheduleFormModal } from "@/components/schedules/schedule-form";
 import { toast } from "@/components/ui/toaster";
 import { apiErrorMessage } from "@/lib/axios";
-import { formatCurrency, formatDateTime } from "@/lib/utils";
+import { cityLabel, formatCurrency, formatDateTime } from "@/lib/utils";
 import type { Schedule } from "@/types/api";
 
 export default function SchedulesPage() {
@@ -89,15 +89,19 @@ export default function SchedulesPage() {
               </THead>
               <TBody>
                 {items.map((s) => {
-                  const origin = s.route?.origin?.name ?? s.origin_city ?? "—";
-                  const destination = s.route?.destination?.name ?? s.destination_city ?? "—";
+                  const origin = cityLabel(
+                    s.route?.origin ?? (s.origin_city ? { city: s.origin_city } : null)
+                  );
+                  const destination = cityLabel(
+                    s.route?.destination ?? (s.destination_city ? { city: s.destination_city } : null)
+                  );
                   return (
                     <TR key={s.id}>
                       <TD>
-                        <div className="flex items-center gap-2 font-medium text-slate-900">
-                          {origin}
-                          <ArrowRight className="h-3.5 w-3.5 text-slate-400" />
-                          {destination}
+                        <div className="flex items-center gap-2 text-slate-900">
+                          <Endpoint label={origin} />
+                          <ArrowRight className="h-3.5 w-3.5 shrink-0 text-slate-400" />
+                          <Endpoint label={destination} />
                         </div>
                         {s.is_round_trip && (
                           <Badge tone="blue" className="mt-1">
@@ -143,9 +147,12 @@ export default function SchedulesPage() {
         title="Delete schedule"
         description={
           toDelete
-            ? `Delete the ${toDelete.route?.origin?.name ?? toDelete.origin_city ?? "selected"} → ${
-                toDelete.route?.destination?.name ?? toDelete.destination_city ?? ""
-              } schedule? This cannot be undone.`
+            ? `Delete the ${cityLabel(
+                toDelete.route?.origin ?? (toDelete.origin_city ? { city: toDelete.origin_city } : null)
+              ).primary} → ${cityLabel(
+                toDelete.route?.destination ??
+                  (toDelete.destination_city ? { city: toDelete.destination_city } : null)
+              ).primary} schedule? This cannot be undone.`
             : ""
         }
         confirmLabel="Delete"
@@ -155,5 +162,18 @@ export default function SchedulesPage() {
         onCancel={() => setToDelete(null)}
       />
     </div>
+  );
+}
+
+// Renders a route endpoint: the city, with the location name beneath only when
+// it differs from the city.
+function Endpoint({ label }: { label: { primary: string; secondary?: string } }) {
+  return (
+    <span className="leading-tight">
+      <span className="font-medium">{label.primary}</span>
+      {label.secondary && (
+        <span className="block text-xs font-normal text-slate-400">{label.secondary}</span>
+      )}
+    </span>
   );
 }

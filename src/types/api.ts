@@ -50,8 +50,7 @@ export interface Tenant {
   name: string;
   email?: string | null;
   phone?: string | null;
-  address?: string | null;
-  logo?: string | null;
+  logo_url?: string | null;
   status?: string | null;
   created_at?: string;
 }
@@ -197,4 +196,13 @@ export interface State {
   id: number;
   name: string;
   code?: string | null;
+}
+
+// POST /upload/images
+export type UploadType = "tenants" | "vehicles" | "profiles" | "routes" | "locations";
+
+export interface UploadResult {
+  url: string;
+  path: string;
+  type: string;
 }

@@ -1,12 +1,13 @@
 "use client";
 
-import { Building2, User as UserIcon, ShieldCheck, LogOut } from "lucide-react";
+import { User as UserIcon, ShieldCheck, LogOut } from "lucide-react";
 import { useAuthStore, displayName, isSuperAdmin, primaryRole } from "@/store/auth";
 import { useLogout } from "@/hooks/useAuth";
 import { PageHeader } from "@/components/ui/page-header";
 import { Card, CardHeader, CardTitle, CardBody } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { TenantSettingsForm } from "@/components/settings/tenant-form";
 
 function Row({ label, value }: { label: string; value?: React.ReactNode }) {
   return (
@@ -26,44 +27,32 @@ export default function SettingsPage() {
     <div className="space-y-6">
       <PageHeader title="Settings" description="Your account and tenant details." />
 
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <UserIcon className="h-4 w-4 text-slate-400" /> Profile
-            </CardTitle>
-          </CardHeader>
-          <CardBody className="py-1">
-            <Row label="Name" value={displayName(user)} />
-            <Row label="Email" value={user?.email} />
-            <Row label="Phone" value={user?.phone} />
-            <Row
-              label="Role"
-              value={
-                superAdmin ? (
-                  <Badge tone="purple">Super Admin</Badge>
-                ) : (
-                  <Badge tone="blue">{primaryRole(user)}</Badge>
-                )
-              }
-            />
-          </CardBody>
-        </Card>
+      {/* Editable business details + logo */}
+      <TenantSettingsForm />
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Building2 className="h-4 w-4 text-slate-400" /> Tenant
-            </CardTitle>
-          </CardHeader>
-          <CardBody className="py-1">
-            <Row label="Tenant" value={user?.tenant?.name} />
-            <Row label="Tenant ID" value={user?.tenant_id ?? "—"} />
-            <Row label="Email" value={user?.tenant?.email} />
-            <Row label="Phone" value={user?.tenant?.phone} />
-          </CardBody>
-        </Card>
-      </div>
+      {/* Read-only account profile (no self-update endpoint for users yet) */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <UserIcon className="h-4 w-4 text-slate-400" /> Your account
+          </CardTitle>
+        </CardHeader>
+        <CardBody className="py-1">
+          <Row label="Name" value={displayName(user)} />
+          <Row label="Email" value={user?.email} />
+          <Row label="Phone" value={user?.phone} />
+          <Row
+            label="Role"
+            value={
+              superAdmin ? (
+                <Badge tone="purple">Super Admin</Badge>
+              ) : (
+                <Badge tone="blue">{primaryRole(user)}</Badge>
+              )
+            }
+          />
+        </CardBody>
+      </Card>
 
       <Card>
         <CardHeader>

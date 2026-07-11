@@ -4,7 +4,7 @@ import { useState, useRef, useEffect } from "react";
 import { Menu, ChevronDown, LogOut, Building2 } from "lucide-react";
 import { useAuthStore, displayName, isSuperAdmin } from "@/store/auth";
 import { useLogout } from "@/hooks/useAuth";
-import { initials } from "@/lib/utils";
+import { initials, assetUrl } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 
 export function Header({ onMenu }: { onMenu: () => void }) {
@@ -32,7 +32,16 @@ export function Header({ onMenu }: { onMenu: () => void }) {
       </button>
 
       <div className="hidden items-center gap-2 text-sm text-slate-500 sm:flex">
-        <Building2 className="h-4 w-4" />
+        {user?.tenant?.logo_url ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={assetUrl(user.tenant.logo_url) ?? ""}
+            alt={user.tenant.name}
+            className="h-6 w-6 rounded-full border border-slate-200 object-cover"
+          />
+        ) : (
+          <Building2 className="h-4 w-4" />
+        )}
         <span className="font-medium text-slate-700">
           {user?.tenant?.name ?? (superAdmin ? "All Tenants" : "My Tenant")}
         </span>
