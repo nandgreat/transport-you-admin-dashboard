@@ -1,5 +1,6 @@
 "use client";
 
+import { useMemo } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -8,10 +9,17 @@ import { Button } from "@/components/ui/button";
 import { Input, Select, Field } from "@/components/ui/input";
 import { toast } from "@/components/ui/toaster";
 import { apiErrorMessage } from "@/lib/axios";
-import { useCreateSchedule, useVehicleTypes } from "@/hooks/resources";
+import { useCreateSchedule, useLocations, useVehicleTypes } from "@/hooks/resources";
 import { cn } from "@/lib/utils";
 
 const DAYS = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"] as const;
+
+// Today's date as a local YYYY-MM-DD string (matches <input type="date"> values).
+function localToday(): string {
+  const d = new Date();
+  const tz = d.getTimezoneOffset() * 60000;
+  return new Date(d.getTime() - tz).toISOString().slice(0, 10);
+}
 
 const schema = z
   .object({
@@ -35,15 +43,40 @@ const schema = z
     arrival_clock: z.string().optional(),
   })
   .superRefine((v, ctx) => {
+    if (
+      v.origin_city &&
+      v.destination_city &&
+      v.origin_city.trim().toLowerCase() === v.destination_city.trim().toLowerCase()
+    ) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["destination_city"],
+        message: "Destination cannot be the same as origin",
+      });
+    }
+
     if (v.mode === "one_off") {
       if (!v.departure_time)
         ctx.addIssue({ code: "custom", path: ["departure_time"], message: "Required" });
       if (!v.arrival_time)
         ctx.addIssue({ code: "custom", path: ["arrival_time"], message: "Required" });
     } else {
+      const today = localToday();
       if (!v.start_date)
         ctx.addIssue({ code: "custom", path: ["start_date"], message: "Required" });
+      else if (v.start_date < today)
+        ctx.addIssue({
+          code: "custom",
+          path: ["start_date"],
+          message: "Start date cannot be in the past",
+        });
       if (!v.end_date) ctx.addIssue({ code: "custom", path: ["end_date"], message: "Required" });
+      else if (v.start_date && v.end_date < v.start_date)
+        ctx.addIssue({
+          code: "custom",
+          path: ["end_date"],
+          message: "End date must be on or after the start date",
+        });
       if (!v.days_of_week?.length)
         ctx.addIssue({ code: "custom", path: ["days_of_week"], message: "Pick at least one day" });
       if (!v.departure_clock)
@@ -58,6 +91,7 @@ type FormValues = z.infer<typeof schema>;
 export function ScheduleFormModal({ open, onClose }: { open: boolean; onClose: () => void }) {
   const create = useCreateSchedule();
   const vehicleTypes = useVehicleTypes({ per_page: 100 });
+  const locations = useLocations({ per_page: 100 });
 
   const {
     register,
@@ -72,8 +106,39 @@ export function ScheduleFormModal({ open, onClose }: { open: boolean; onClose: (
   });
 
   const mode = watch("mode");
+  const originCity = watch("origin_city");
   const isRoundTrip = watch("is_round_trip");
   const days = watch("days_of_week") ?? [];
+  const startDate = watch("start_date");
+  const today = localToday();
+
+  const cityOptions = useMemo(() => {
+    const items = locations.data?.items ?? [];
+    const map = new Map<string, { city: string; label: string }>();
+
+    for (const loc of items) {
+      const city = (loc.city || loc.name || "").trim();
+      if (!city) continue;
+      const key = city.toLowerCase();
+      if (!map.has(key)) {
+        const stateName =
+          typeof loc.state === "object" && loc.state
+            ? loc.state.name
+            : typeof loc.state === "string"
+            ? loc.state
+            : undefined;
+
+        const label =
+          stateName && stateName.toLowerCase() !== city.toLowerCase()
+            ? `${city} (${stateName})`
+            : city;
+
+        map.set(key, { city, label });
+      }
+    }
+
+    return Array.from(map.values()).sort((a, b) => a.city.localeCompare(b.city));
+  }, [locations.data?.items]);
 
   const toggleDay = (day: string) => {
     setValue(
@@ -165,10 +230,40 @@ export function ScheduleFormModal({ open, onClose }: { open: boolean; onClose: (
 
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <Field label="Origin city" required error={errors.origin_city?.message}>
-            <Input placeholder="Abuja" {...register("origin_city")} />
+            <Select {...register("origin_city")} disabled={locations.isLoading}>
+              <option value="">
+                {locations.isLoading
+                  ? "Loading cities…"
+                  : locations.isError
+                  ? "Failed to load cities"
+                  : "Select origin city…"}
+              </option>
+              {cityOptions.map((c) => (
+                <option key={c.city} value={c.city}>
+                  {c.label}
+                </option>
+              ))}
+            </Select>
           </Field>
           <Field label="Destination city" required error={errors.destination_city?.message}>
-            <Input placeholder="Lagos" {...register("destination_city")} />
+            <Select {...register("destination_city")} disabled={locations.isLoading}>
+              <option value="">
+                {locations.isLoading
+                  ? "Loading cities…"
+                  : locations.isError
+                  ? "Failed to load cities"
+                  : "Select destination city…"}
+              </option>
+              {cityOptions.map((c) => (
+                <option
+                  key={c.city}
+                  value={c.city}
+                  disabled={c.city.toLowerCase() === originCity?.toLowerCase()}
+                >
+                  {c.label}
+                </option>
+              ))}
+            </Select>
           </Field>
           <Field label="Vehicle type" required error={errors.vehicle_type_id?.message}>
             <Select {...register("vehicle_type_id")}>
@@ -219,10 +314,10 @@ export function ScheduleFormModal({ open, onClose }: { open: boolean; onClose: (
           <div className="space-y-4 rounded-lg border border-slate-200 p-4">
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <Field label="Start date" required error={errors.start_date?.message}>
-                <Input type="date" {...register("start_date")} />
+                <Input type="date" min={today} {...register("start_date")} />
               </Field>
               <Field label="End date" required error={errors.end_date?.message}>
-                <Input type="date" {...register("end_date")} />
+                <Input type="date" min={startDate || today} {...register("end_date")} />
               </Field>
               <Field label="Departure time" required error={errors.departure_clock?.message}>
                 <Input type="time" {...register("departure_clock")} />

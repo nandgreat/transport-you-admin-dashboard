@@ -57,6 +57,17 @@ export function initials(first?: string, last?: string): string {
   return `${first?.[0] ?? ""}${last?.[0] ?? ""}`.toUpperCase() || "?";
 }
 
+// Human-readable gap between two datetimes (e.g. "9h 30m").
+export function durationBetween(from?: string | null, to?: string | null): string {
+  const a = parseDate(from);
+  const b = parseDate(to);
+  if (!a || !b) return "—";
+  const mins = Math.max(0, Math.round((b.getTime() - a.getTime()) / 60000));
+  const h = Math.floor(mins / 60);
+  const m = mins % 60;
+  return h > 0 ? `${h}h${m ? ` ${m}m` : ""}` : `${m}m`;
+}
+
 // Resolve an image path from the API into a full URL. The API stores relative
 // paths like "vehicles/xxx.png" served from {origin}/storage/, but sometimes
 // returns an absolute URL — pass those through unchanged.

@@ -91,41 +91,93 @@ export interface Operator {
   logo_url?: string | null;
 }
 
+export interface ScheduleSeat {
+  number: number;
+  available: boolean;
+}
+
 export interface Schedule {
   id: number;
+  // "one_off" (a Schedule row) or "recurring" (a ScheduleGroup pattern),
+  // both collapsed into the unified /schedules list.
+  type?: "one_off" | "recurring";
   tenant_id?: number;
   departure_time: string;
   arrival_time: string;
   fare: number | string;
   status?: string | null;
   available_seats?: number | null;
+  capacity?: number | null;
   is_round_trip?: boolean;
   route?: EmbeddedRoute | null;
   vehicle_type?: VehicleType | null;
   operator?: Operator | null;
   return_trip?: Schedule | null;
+  // Seat arrangement / seat map (present on the detail endpoint).
+  seat_arrangement?: {
+    id: number;
+    name: string;
+    number_of_seats: number;
+    arrangement_image?: string | null;
+    description?: string | null;
+  } | null;
+  seat_arrangement_label?: string | null;
+  seat_selection_enabled?: boolean;
+  seats?: ScheduleSeat[];
+  // Recurring-schedule fields
+  days_of_week?: string[] | null;
+  start_date?: string | null;
+  end_date?: string | null;
+  schedule_end_date?: string | null;
+  schedule_group_id?: number | null;
   // present only on creation payloads / legacy responses
   origin_city?: string;
   destination_city?: string;
-  days_of_week?: string[] | null;
   created_at?: string;
 }
 
 export type BookingStatus = "pending" | "confirmed" | "cancelled";
 
+export interface Passenger {
+  name: string;
+  phone?: string | null;
+  email?: string | null;
+}
+
+export interface BookingCustomer {
+  id: number;
+  name: string;
+  email?: string | null;
+  phone?: string | null;
+}
+
+// The schedule summary embedded inside a booking (a subset of the full trip).
+export interface BookingSchedule {
+  id: number;
+  departure_time: string;
+  arrival_time: string;
+  fare: number | string;
+  status?: string | null;
+  available_seats?: number | null;
+  route?: EmbeddedRoute | null;
+  vehicle_type?: {
+    id: number;
+    vehicle_name: string;
+    capacity?: number | null;
+  } | null;
+}
+
 export interface Booking {
   id: number;
-  reference?: string | null;
-  tenant_id: number;
-  schedule_id: number;
-  schedule?: Schedule | null;
-  user_id?: number | null;
-  customer_name?: string | null;
-  customer_email?: string | null;
-  customer_phone?: string | null;
-  seats?: number | null;
-  amount?: number | null;
   status: BookingStatus;
+  total_amount: number | string;
+  passengers: Passenger[];
+  notes?: string | null;
+  is_round_trip?: boolean;
+  schedule?: BookingSchedule | null;
+  customer?: BookingCustomer | null;
+  operator?: Operator | null;
+  return_booking?: Booking | null;
   created_at?: string;
 }
 
@@ -171,12 +223,24 @@ export interface Location {
   created_at?: string;
 }
 
+// A seat arrangement as returned nested on a vehicle type, carrying the
+// many-to-many pivot (which one is the default).
+export interface SeatArrangementTypeWithPivot extends SeatArrangementType {
+  pivot?: {
+    vehicle_type_id: number;
+    seat_arrangement_type_id: number;
+    is_default: boolean;
+  };
+}
+
 export interface VehicleType {
   id: number;
   vehicle_name: string;
   description?: string | null;
   vehicle_category_id?: number | null;
   category?: VehicleCategory | null;
+  // A vehicle type supports multiple seat arrangements, one marked default.
+  seat_arrangement_types?: SeatArrangementTypeWithPivot[];
   capacity?: number | null;
   year?: number | null;
   image_url?: string | null;
@@ -192,6 +256,17 @@ export interface VehicleCategory {
   created_at?: string;
 }
 
+export interface SeatArrangementType {
+  id: number;
+  name: string;
+  number_of_seats: number;
+  arrangement_image?: string | null;
+  description?: string | null;
+  status?: string | null;
+  vehicle_types_count?: number;
+  created_at?: string;
+}
+
 export interface State {
   id: number;
   name: string;
@@ -199,7 +274,14 @@ export interface State {
 }
 
 // POST /upload/images
-export type UploadType = "tenants" | "vehicles" | "profiles" | "routes" | "locations";
+export type UploadType =
+  | "tenants"
+  | "vehicles"
+  | "profiles"
+  | "routes"
+  | "locations"
+  | "schedules"
+  | "misc";
 
 export interface UploadResult {
   url: string;

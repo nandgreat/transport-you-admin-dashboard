@@ -10,7 +10,7 @@ import { Table, THead, TH, TBody, TR, TD } from "@/components/ui/table";
 import { StatusBadge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { EmptyState, LoadingBlock } from "@/components/ui/states";
-import { formatCurrency, formatDateTime } from "@/lib/utils";
+import { formatCurrency } from "@/lib/utils";
 
 const quickLinks = [
   { label: "New Schedule", href: "/schedules?new=1", icon: CalendarClock },
@@ -29,7 +29,7 @@ export default function DashboardHome() {
 
   const recent = allBookings.data?.items ?? [];
 
-  const revenue = recent.reduce((sum, b) => sum + (Number(b.amount) || 0), 0);
+  const revenue = recent.reduce((sum, b) => sum + (Number(b.total_amount) || 0), 0);
 
   return (
     <div className="space-y-6">
@@ -111,25 +111,31 @@ export default function DashboardHome() {
             <Table>
               <THead>
                 <TR>
-                  <TH>Reference</TH>
+                  <TH>Booking</TH>
                   <TH>Customer</TH>
+                  <TH>Trip</TH>
                   <TH>Amount</TH>
                   <TH>Status</TH>
-                  <TH>Date</TH>
                 </TR>
               </THead>
               <TBody>
                 {recent.map((b) => (
                   <TR key={b.id}>
-                    <TD className="font-medium text-slate-900">
-                      {b.reference ?? `#${b.id}`}
+                    <TD className="font-medium text-slate-900">#{b.id}</TD>
+                    <TD>{b.customer?.name ?? "—"}</TD>
+                    <TD className="text-slate-500">
+                      {b.schedule?.route?.origin?.city ??
+                        b.schedule?.route?.origin?.name ??
+                        "—"}{" "}
+                      →{" "}
+                      {b.schedule?.route?.destination?.city ??
+                        b.schedule?.route?.destination?.name ??
+                        "—"}
                     </TD>
-                    <TD>{b.customer_name ?? "—"}</TD>
-                    <TD>{formatCurrency(b.amount)}</TD>
+                    <TD>{formatCurrency(b.total_amount)}</TD>
                     <TD>
                       <StatusBadge status={b.status} />
                     </TD>
-                    <TD className="text-slate-500">{formatDateTime(b.created_at)}</TD>
                   </TR>
                 ))}
               </TBody>

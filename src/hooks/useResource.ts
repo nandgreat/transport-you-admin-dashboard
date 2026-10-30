@@ -21,18 +21,38 @@ export interface ListResult<T> {
   } | null;
 }
 
-function normaliseList<T>(payload: Paginated<T> | T[]): ListResult<T> {
+function normaliseList<T>(
+  payload: Paginated<T> | T[],
+  pagination?: {
+    current_page: number;
+    last_page: number;
+    total: number;
+    per_page: number;
+  }
+): ListResult<T> {
   if (Array.isArray(payload)) {
-    return { items: payload, meta: null };
+    return {
+      items: payload,
+      meta: pagination
+        ? {
+            current_page: pagination.current_page,
+            last_page: pagination.last_page,
+            total: pagination.total,
+            per_page: pagination.per_page,
+          }
+        : null,
+    };
   }
   return {
-    items: payload.data ?? [],
-    meta: {
-      current_page: payload.current_page,
-      last_page: payload.last_page,
-      total: payload.total,
-      per_page: payload.per_page,
-    },
+    items: payload?.data ?? [],
+    meta: payload
+      ? {
+          current_page: payload.current_page,
+          last_page: payload.last_page,
+          total: payload.total,
+          per_page: payload.per_page,
+        }
+      : null,
   };
 }
 
@@ -46,10 +66,10 @@ export function useList<T>(
   return useQuery<ListResult<T>>({
     queryKey: [resource, "list", params],
     queryFn: async () => {
-      const { data } = await api.get<ApiResponse<Paginated<T> | T[]>>(`/${resource}`, {
+      const { data } = await api.get<any>(`/${resource}`, {
         params,
       });
-      return normaliseList<T>(data.data);
+      return normaliseList<T>(data.data, data.pagination);
     },
     ...options,
   });

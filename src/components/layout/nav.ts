@@ -6,6 +6,7 @@ import {
   Route as RouteIcon,
   MapPin,
   Layers,
+  Armchair,
   Settings,
   type LucideIcon,
 } from "lucide-react";
@@ -41,6 +42,7 @@ export const navSections: NavSection[] = [
     title: "Configuration",
     items: [
       { label: "Vehicle Types", href: "/vehicle-types", icon: Layers },
+      { label: "Seat Arrangements", href: "/seat-arrangements", icon: Armchair },
       { label: "Settings", href: "/settings", icon: Settings },
     ],
   },

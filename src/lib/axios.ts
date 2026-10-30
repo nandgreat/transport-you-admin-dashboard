@@ -29,6 +29,21 @@ api.interceptors.response.use(
   }
 );
 
+// Turn a leaked raw database error into something a user can understand.
+function friendlyDbMessage(message: string): string | null {
+  const m = message.toLowerCase();
+  // Postgres: 23503 foreign_key_violation / 23001 restrict_violation
+  if (
+    m.includes("foreign key constraint") ||
+    m.includes("restrict violation") ||
+    m.includes("violates") ||
+    m.includes("sqlstate")
+  ) {
+    return "This record can't be deleted because it's still in use by other records.";
+  }
+  return null;
+}
+
 // Normalise an axios error into a human-friendly message.
 export function apiErrorMessage(error: unknown, fallback = "Something went wrong"): string {
   if (axios.isAxiosError(error)) {
@@ -39,7 +54,10 @@ export function apiErrorMessage(error: unknown, fallback = "Something went wrong
       const first = Object.values(data.errors)[0];
       if (first?.[0]) return first[0];
     }
-    if (data?.message) return data.message;
+    if (data?.message) {
+      // Never surface a raw SQL / constraint error to the user.
+      return friendlyDbMessage(data.message) ?? data.message;
+    }
     if (error.message) return error.message;
   }
   return fallback;

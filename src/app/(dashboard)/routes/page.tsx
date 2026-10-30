@@ -28,7 +28,7 @@ type FormValues = z.infer<typeof schema>;
 
 function RouteFormModal({ open, onClose }: { open: boolean; onClose: () => void }) {
   const create = useCreateRoute();
-  const locations = useLocations({ per_page: 200 });
+  const locations = useLocations({ per_page: 100 });
   const {
     register,
     handleSubmit,

@@ -17,6 +17,7 @@ import type {
   Location,
   Route,
   Schedule,
+  SeatArrangementType,
   State,
   Tenant,
   UploadResult,
@@ -75,6 +76,7 @@ export const useCreateRoute = () => useCreate<Route>("routes");
 // --- Locations -------------------------------------------------------------
 export const useLocations = (params?: ListParams) => useList<Location>("locations", params);
 export const useCreateLocation = () => useCreate<Location>("locations");
+export const useUpdateLocation = () => useUpdate<Location>("locations");
 
 // --- Vehicle types / categories -------------------------------------------
 export const useVehicleTypes = (params?: ListParams) =>
@@ -86,6 +88,16 @@ export const useDeleteVehicleType = () => useRemove("vehicle-types");
 export const useVehicleCategories = (params?: ListParams) =>
   useList<VehicleCategory>("vehicle-categories", params);
 export const useCreateVehicleCategory = () => useCreate<VehicleCategory>("vehicle-categories");
+
+// --- Seat arrangement types ------------------------------------------------
+export const useSeatArrangementTypes = (params?: ListParams) =>
+  useList<SeatArrangementType>("seat-arrangement-types", params);
+export const useCreateSeatArrangementType = () =>
+  useCreate<SeatArrangementType>("seat-arrangement-types");
+// apiResource update accepts PUT.
+export const useUpdateSeatArrangementType = () =>
+  useUpdate<SeatArrangementType>("seat-arrangement-types", "put");
+export const useDeleteSeatArrangementType = () => useRemove("seat-arrangement-types");
 
 // --- States ----------------------------------------------------------------
 export const useStates = () =>
