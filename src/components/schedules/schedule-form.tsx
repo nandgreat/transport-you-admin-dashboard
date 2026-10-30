@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -10,7 +10,7 @@ import { Input, Select, Field } from "@/components/ui/input";
 import { toast } from "@/components/ui/toaster";
 import { apiErrorMessage } from "@/lib/axios";
 import { useCreateSchedule, useLocations, useVehicleTypes } from "@/hooks/resources";
-import { cn } from "@/lib/utils";
+import { cn, assetUrl } from "@/lib/utils";
 
 const DAYS = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"] as const;
 
@@ -27,6 +27,7 @@ const schema = z
     origin_city: z.string().min(1, "Origin is required"),
     destination_city: z.string().min(1, "Destination is required"),
     vehicle_type_id: z.string().min(1, "Vehicle type is required"),
+    seat_arrangement_type_id: z.string().optional(),
     fare: z.string().min(1, "Fare is required"),
     // one-off
     departure_time: z.string().optional(),
@@ -110,7 +111,24 @@ export function ScheduleFormModal({ open, onClose }: { open: boolean; onClose: (
   const isRoundTrip = watch("is_round_trip");
   const days = watch("days_of_week") ?? [];
   const startDate = watch("start_date");
+  const vehicleTypeId = watch("vehicle_type_id");
+  const seatArrangementId = watch("seat_arrangement_type_id");
   const today = localToday();
+
+  const typeOptions = vehicleTypes.data?.items ?? [];
+  // Seat arrangements available on the selected vehicle type.
+  const selectedType = typeOptions.find((t) => String(t.id) === vehicleTypeId);
+  const arrangements = selectedType?.seat_arrangement_types ?? [];
+  const selectedArrangement = arrangements.find((a) => String(a.id) === seatArrangementId);
+
+  // When the vehicle type changes, default the seat arrangement to its default.
+  useEffect(() => {
+    const t = typeOptions.find((x) => String(x.id) === vehicleTypeId);
+    const arrs = t?.seat_arrangement_types ?? [];
+    const def = arrs.find((a) => a.pivot?.is_default) ?? arrs[0];
+    setValue("seat_arrangement_type_id", def ? String(def.id) : "");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [vehicleTypeId]);
 
   const cityOptions = useMemo(() => {
     const items = locations.data?.items ?? [];
@@ -153,6 +171,9 @@ export function ScheduleFormModal({ open, onClose }: { open: boolean; onClose: (
       origin_city: v.origin_city,
       destination_city: v.destination_city,
       vehicle_type_id: Number(v.vehicle_type_id),
+      ...(v.seat_arrangement_type_id
+        ? { seat_arrangement_type_id: Number(v.seat_arrangement_type_id) }
+        : {}),
       fare: Number(v.fare),
     };
 
@@ -189,8 +210,6 @@ export function ScheduleFormModal({ open, onClose }: { open: boolean; onClose: (
       onError: (e) => toast.error(apiErrorMessage(e, "Could not create schedule")),
     });
   };
-
-  const typeOptions = vehicleTypes.data?.items ?? [];
 
   return (
     <Modal
@@ -275,10 +294,56 @@ export function ScheduleFormModal({ open, onClose }: { open: boolean; onClose: (
               ))}
             </Select>
           </Field>
+          <Field
+            label="Seat arrangement"
+            error={errors.seat_arrangement_type_id?.message}
+            hint={
+              !vehicleTypeId
+                ? "Select a vehicle type first"
+                : arrangements.length === 0
+                ? "This vehicle type has no seat arrangements"
+                : undefined
+            }
+          >
+            <Select
+              {...register("seat_arrangement_type_id")}
+              disabled={!vehicleTypeId || arrangements.length === 0}
+            >
+              <option value="">Select arrangement…</option>
+              {arrangements.map((a) => (
+                <option key={a.id} value={a.id}>
+                  {a.name} ({a.number_of_seats} seats)
+                  {a.pivot?.is_default ? " · default" : ""}
+                </option>
+              ))}
+            </Select>
+          </Field>
           <Field label="Fare (₦)" required error={errors.fare?.message}>
             <Input type="number" min="0" placeholder="8500" {...register("fare")} />
           </Field>
         </div>
+
+        {selectedArrangement && (
+          <div className="flex items-center gap-3 rounded-lg border border-slate-200 bg-slate-50 p-3">
+            {assetUrl(selectedArrangement.arrangement_image) ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={assetUrl(selectedArrangement.arrangement_image)!}
+                alt={selectedArrangement.name}
+                className="h-14 w-20 shrink-0 rounded-md border border-slate-200 bg-white object-contain"
+              />
+            ) : null}
+            <div className="min-w-0">
+              <p className="text-sm font-medium text-slate-900">{selectedArrangement.name}</p>
+              <p className="text-xs text-slate-500">
+                {selectedArrangement.number_of_seats} seats
+              </p>
+              {selectedArrangement.description && (
+                <p className="mt-0.5 text-xs text-slate-400">{selectedArrangement.description}</p>
+              )}
+            </div>
+          </div>
+        )}
 
         {mode === "one_off" ? (
           <div className="space-y-4 rounded-lg border border-slate-200 p-4">

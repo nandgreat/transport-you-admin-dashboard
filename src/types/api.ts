@@ -136,6 +136,118 @@ export interface Schedule {
   created_at?: string;
 }
 
+// ---------------------------------------------------------------------------
+// Scheduled trips (concrete, dated trips derived from schedules / groups)
+// ---------------------------------------------------------------------------
+
+export type ScheduledTripStatus =
+  | "not_started"
+  | "ongoing"
+  | "completed"
+  | "cancelled";
+
+export interface ScheduledTrip {
+  id: number;
+  // Where the trip came from: a one-off Schedule or a recurring ScheduleGroup.
+  source: ScheduleType;
+  schedule_group_id?: number | null;
+  travel_date?: string | null;
+  departure_time: string;
+  arrival_time: string;
+  fare: number | string;
+  // Operational lifecycle of the trip itself.
+  trip_status: ScheduledTripStatus;
+  // Publishing status (e.g. "scheduled", "cancelled").
+  status?: string | null;
+  seat_selection_enabled?: boolean;
+  seat_arrangement?: {
+    id: number;
+    name: string;
+    number_of_seats: number;
+  } | null;
+  capacity?: number | null;
+  booked_seats?: number;
+  available_seats?: number;
+  passenger_count?: number;
+  checked_in_count?: number;
+  not_checked_in_count?: number;
+  route?: EmbeddedRoute | null;
+  vehicle_type?: { id: number; vehicle_name: string } | null;
+  assignment?: TripAssignment | null;
+  operator?: Operator | null;
+}
+
+// Vehicle + driver currently assigned to a trip.
+export interface TripAssignment {
+  assigned: boolean;
+  assigned_at?: string | null;
+  vehicle?: {
+    id: number;
+    registration_number?: string | null;
+    vehicle_type?: string | null;
+    status?: string | null;
+  } | null;
+  driver?: {
+    id: number;
+    name: string;
+    phone?: string | null;
+    licence_number?: string | null;
+    availability?: DriverAvailability;
+    trips_completed?: number;
+  } | null;
+}
+
+// PATCH /scheduled-trips/{id}/assignment
+export interface AssignTripPayload {
+  vehicle_id: number;
+  driver_id: number;
+}
+
+// A trip as listed under a driver's record (compact view).
+export interface DriverTrip {
+  id: number;
+  source: ScheduleType;
+  travel_date?: string | null;
+  departure_time: string;
+  arrival_time: string;
+  trip_status: ScheduledTripStatus;
+  fare: number | string;
+  capacity?: number | null;
+  booked_seats?: number;
+  route?: EmbeddedRoute | null;
+  vehicle?: { id: number; registration_number?: string | null } | null;
+  vehicle_type?: { id: number; vehicle_name: string } | null;
+}
+
+// GET /drivers/{id}/trips
+export interface DriverTripsResult {
+  counts: { assigned: number; ongoing: number; completed: number };
+  trips: DriverTrip[];
+}
+
+// A single passenger on a trip's manifest.
+export interface TripPassenger {
+  booking_id: number;
+  booking_reference?: string | null;
+  ticket_code?: string | null;
+  name: string;
+  phone?: string | null;
+  seat_number?: number | null;
+  checked_in: boolean;
+  ticket_status?: string | null;
+}
+
+// GET /scheduled-trips/{id}/passengers
+export interface TripManifest {
+  id: number;
+  travel_date?: string | null;
+  trip_status: ScheduledTripStatus;
+  passenger_count: number;
+  checked_in_count: number;
+  not_checked_in_count: number;
+  passengers: TripPassenger[];
+}
+
 export type BookingStatus = "pending" | "confirmed" | "cancelled";
 
 export interface Passenger {
@@ -181,6 +293,15 @@ export interface Booking {
   created_at?: string;
 }
 
+// GET /bookings/summary — dashboard aggregates.
+export interface BookingSummary {
+  total_bookings: number;
+  // Value of live bookings (excludes cancelled & expired).
+  total_amount: number | string;
+  // Sum of confirmed bookings only (realised revenue).
+  confirmed_amount: number | string;
+}
+
 export interface Vehicle {
   id: number;
   tenant_id: number;
@@ -195,6 +316,34 @@ export interface Vehicle {
   image?: string | null;
   status?: string | null;
   created_at?: string;
+}
+
+export type DriverStatus = "active" | "inactive";
+
+// Operational availability, distinct from the active/inactive account status.
+export type DriverAvailability = "available" | "on_trip" | "unavailable";
+
+export interface Driver {
+  id: number;
+  tenant_id?: number;
+  name: string;
+  phone?: string | null;
+  email?: string | null;
+  licence_number?: string | null;
+  status: DriverStatus;
+  availability: DriverAvailability;
+  // Running count of trips this driver has completed (system-managed).
+  trips_completed?: number;
+  created_at?: string;
+}
+
+export interface DriverPayload {
+  name: string;
+  phone?: string | null;
+  email?: string | null;
+  licence_number?: string | null;
+  status?: DriverStatus;
+  availability?: DriverAvailability;
 }
 
 export interface Route {

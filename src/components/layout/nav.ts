@@ -1,8 +1,10 @@
 import {
   LayoutDashboard,
   CalendarClock,
+  Navigation,
   Ticket,
   Bus,
+  IdCard,
   Route as RouteIcon,
   MapPin,
   Layers,
@@ -32,8 +34,10 @@ export const navSections: NavSection[] = [
     title: "Operations",
     items: [
       { label: "Schedules", href: "/schedules", icon: CalendarClock },
+      { label: "Scheduled Trips", href: "/scheduled-trips", icon: Navigation },
       { label: "Bookings", href: "/bookings", icon: Ticket },
       { label: "Vehicles", href: "/vehicles", icon: Bus },
+      { label: "Drivers", href: "/drivers", icon: IdCard },
       { label: "Routes", href: "/routes", icon: RouteIcon },
       { label: "Locations", href: "/locations", icon: MapPin },
     ],

@@ -1,8 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { CalendarClock, Ticket, Bus, Clock, ArrowRight, Plus } from "lucide-react";
-import { useBookings, useSchedules, useVehicles } from "@/hooks/resources";
+import { CalendarClock, Ticket, Bus, Clock, ArrowRight, Plus, Navigation, Wallet } from "lucide-react";
+import {
+  useBookings,
+  useBookingSummary,
+  useSchedules,
+  useScheduledTrips,
+  useVehicles,
+} from "@/hooks/resources";
 import { useAuthStore, displayName } from "@/store/auth";
 import { StatCard } from "@/components/dashboard/stat-card";
 import { Card, CardHeader, CardTitle, CardBody } from "@/components/ui/card";
@@ -22,14 +28,14 @@ export default function DashboardHome() {
   const user = useAuthStore((s) => s.user);
 
   const schedules = useSchedules({ per_page: 1 });
+  const scheduledTrips = useScheduledTrips({ per_page: 1 });
   const allBookings = useBookings({ per_page: 5 });
+  const summary = useBookingSummary();
   const pending = useBookings({ status: "pending", per_page: 1 });
   const confirmed = useBookings({ status: "confirmed", per_page: 1 });
   const vehicles = useVehicles({ per_page: 1 });
 
   const recent = allBookings.data?.items ?? [];
-
-  const revenue = recent.reduce((sum, b) => sum + (Number(b.total_amount) || 0), 0);
 
   return (
     <div className="space-y-6">
@@ -43,20 +49,39 @@ export default function DashboardHome() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <StatCard
           label="Total Schedules"
           value={schedules.data?.meta?.total ?? schedules.data?.items.length ?? 0}
           icon={CalendarClock}
           tone="brand"
           loading={schedules.isLoading}
+          href="/schedules"
+        />
+        <StatCard
+          label="Scheduled Trips"
+          value={scheduledTrips.data?.meta?.total ?? scheduledTrips.data?.items.length ?? 0}
+          icon={Navigation}
+          tone="blue"
+          loading={scheduledTrips.isLoading}
+          href="/scheduled-trips"
         />
         <StatCard
           label="Total Bookings"
-          value={allBookings.data?.meta?.total ?? recent.length}
+          value={allBookings.data?.meta?.total ?? summary.data?.total_bookings ?? recent.length}
           icon={Ticket}
           tone="green"
           loading={allBookings.isLoading}
+          href="/bookings"
+        />
+        <StatCard
+          label="Total Booking Amount"
+          value={formatCurrency(summary.data?.total_amount ?? 0)}
+          icon={Wallet}
+          tone="rose"
+          loading={summary.isLoading}
+          hint="Excludes cancelled & expired"
+          href="/bookings"
         />
         <StatCard
           label="Pending Bookings"
@@ -65,6 +90,7 @@ export default function DashboardHome() {
           tone="amber"
           loading={pending.isLoading}
           hint="Awaiting confirmation"
+          href="/bookings"
         />
         <StatCard
           label="Active Vehicles"
@@ -72,6 +98,7 @@ export default function DashboardHome() {
           icon={Bus}
           tone="purple"
           loading={vehicles.isLoading}
+          href="/vehicles"
         />
       </div>
 
@@ -152,9 +179,9 @@ export default function DashboardHome() {
             <SnapshotRow label="Confirmed bookings" value={confirmed.data?.meta?.total ?? 0} />
             <SnapshotRow label="Pending bookings" value={pending.data?.meta?.total ?? 0} />
             <SnapshotRow
-              label="Recent revenue"
-              value={formatCurrency(revenue)}
-              hint="Last 5 bookings"
+              label="Confirmed revenue"
+              value={formatCurrency(summary.data?.confirmed_amount ?? 0)}
+              hint="Paid & confirmed bookings"
             />
             <div className="rounded-lg bg-slate-50 p-4">
               <p className="text-sm font-medium text-slate-700">Signed in as</p>

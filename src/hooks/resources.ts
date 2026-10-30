@@ -1,6 +1,6 @@
 "use client";
 
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import api from "@/lib/axios";
 import {
   useCreate,
@@ -14,12 +14,19 @@ import type {
   ApiResponse,
   Booking,
   BookingStatus,
+  BookingSummary,
+  Driver,
+  DriverPayload,
+  DriverTripsResult,
   Location,
   Route,
   Schedule,
+  ScheduledTrip,
+  ScheduledTripStatus,
   SeatArrangementType,
   State,
   Tenant,
+  TripManifest,
   UploadResult,
   UploadType,
   Vehicle,
@@ -34,10 +41,103 @@ export const useCreateSchedule = () => useCreate<Schedule>("schedules");
 export const useUpdateSchedule = () => useUpdate<Schedule>("schedules");
 export const useDeleteSchedule = () => useRemove("schedules");
 
+// --- Scheduled trips -------------------------------------------------------
+// Concrete, dated trips materialised from one-off schedules and recurring
+// groups. Managed operationally (manifest, trip lifecycle) rather than created.
+export const useScheduledTrips = (params?: ListParams) =>
+  useList<ScheduledTrip>("scheduled-trips", params);
+export const useScheduledTrip = (id: number | null) =>
+  useItem<ScheduledTrip>("scheduled-trips", id);
+
+// Passenger manifest + check-in state for a single trip.
+export function useTripManifest(id: number | string | null) {
+  return useQuery<TripManifest>({
+    queryKey: ["scheduled-trips", "manifest", id],
+    enabled: id !== null && id !== undefined,
+    queryFn: async () => {
+      const { data } = await api.get<ApiResponse<TripManifest>>(
+        `/scheduled-trips/${id}/passengers`
+      );
+      return data.data;
+    },
+  });
+}
+
+// Assign a vehicle + driver to a trip. The vehicle must match the trip's
+// vehicle type and the driver must be an active driver of the tenant.
+export function useAssignTrip() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      id,
+      vehicle_id,
+      driver_id,
+    }: {
+      id: number | string;
+      vehicle_id: number;
+      driver_id: number;
+    }) => {
+      const { data } = await api.patch<ApiResponse<ScheduledTrip>>(
+        `/scheduled-trips/${id}/assignment`,
+        { vehicle_id, driver_id }
+      );
+      return data.data;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["scheduled-trips"] }),
+  });
+}
+
+// Clear a trip's vehicle/driver assignment.
+export function useUnassignTrip() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: number | string) => {
+      const { data } = await api.delete<ApiResponse<ScheduledTrip>>(
+        `/scheduled-trips/${id}/assignment`
+      );
+      return data.data;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["scheduled-trips"] }),
+  });
+}
+
+// Advance a trip's lifecycle. The API treats `cancelled` as a heavy action
+// that also cancels the trip's bookings.
+export function useUpdateTripStatus() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      id,
+      status,
+    }: {
+      id: number | string;
+      status: ScheduledTripStatus;
+    }) => {
+      const { data } = await api.patch<ApiResponse<ScheduledTrip>>(
+        `/scheduled-trips/${id}/status`,
+        { status }
+      );
+      return data.data;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["scheduled-trips"] }),
+  });
+}
+
 // --- Bookings --------------------------------------------------------------
 export const useBookings = (params?: ListParams) => useList<Booking>("bookings", params);
 export const useBooking = (id: number | null) => useItem<Booking>("bookings", id);
 export const useCreateBooking = () => useCreate<Booking>("bookings");
+
+// Aggregate booking totals for the dashboard.
+export function useBookingSummary() {
+  return useQuery<BookingSummary>({
+    queryKey: ["bookings", "summary"],
+    queryFn: async () => {
+      const { data } = await api.get<ApiResponse<BookingSummary>>("/bookings/summary");
+      return data.data;
+    },
+  });
+}
 
 export function useUpdateBookingStatus() {
   const qc = useQueryClient();
@@ -68,6 +168,26 @@ export const useVehicles = (params?: ListParams) => useList<Vehicle>("vehicles",
 export const useCreateVehicle = () => useCreate<Vehicle>("vehicles");
 export const useUpdateVehicle = () => useUpdate<Vehicle>("vehicles");
 export const useDeleteVehicle = () => useRemove("vehicles");
+
+// --- Drivers ---------------------------------------------------------------
+export const useDrivers = (params?: ListParams) => useList<Driver>("drivers", params);
+export const useCreateDriver = () => useCreate<Driver, DriverPayload>("drivers");
+export const useUpdateDriver = () => useUpdate<Driver, DriverPayload>("drivers");
+export const useDeleteDriver = () => useRemove("drivers");
+
+// A driver's trips bucketed into assigned / ongoing / completed, with counts.
+export function useDriverTrips(id: number | string | null) {
+  return useQuery<DriverTripsResult>({
+    queryKey: ["drivers", "trips", id],
+    enabled: id !== null && id !== undefined,
+    queryFn: async () => {
+      const { data } = await api.get<ApiResponse<DriverTripsResult>>(
+        `/drivers/${id}/trips`
+      );
+      return data.data;
+    },
+  });
+}
 
 // --- Routes ----------------------------------------------------------------
 export const useRoutes = (params?: ListParams) => useList<Route>("routes", params);
