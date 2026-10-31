@@ -10,6 +10,7 @@ import {
   Layers,
   Armchair,
   Settings,
+  Building2,
   type LucideIcon,
 } from "lucide-react";
 
@@ -19,6 +20,8 @@ export interface NavItem {
   icon: LucideIcon;
   /** exact match only (used for the dashboard root) */
   exact?: boolean;
+  /** only visible to the global super admin */
+  superAdmin?: boolean;
 }
 
 export interface NavSection {
@@ -48,6 +51,12 @@ export const navSections: NavSection[] = [
       { label: "Vehicle Types", href: "/vehicle-types", icon: Layers },
       { label: "Seat Arrangements", href: "/seat-arrangements", icon: Armchair },
       { label: "Settings", href: "/settings", icon: Settings },
+    ],
+  },
+  {
+    title: "Administration",
+    items: [
+      { label: "Tenant Companies", href: "/tenants", icon: Building2, superAdmin: true },
     ],
   },
 ];

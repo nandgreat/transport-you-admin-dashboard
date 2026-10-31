@@ -55,6 +55,35 @@ export interface Tenant {
   created_at?: string;
 }
 
+// A tenant company as seen by a super admin, carrying rollup counts from the
+// management endpoints (GET /tenants).
+export interface TenantCompany extends Tenant {
+  users_count?: number;
+  vehicles_count?: number;
+  schedules_count?: number;
+  bookings_count?: number;
+}
+
+// POST /tenants — create a company and, optionally, its first admin user.
+export interface TenantCreatePayload {
+  name: string;
+  email?: string | null;
+  phone?: string | null;
+  admin_first_name?: string;
+  admin_last_name?: string;
+  admin_email?: string;
+  admin_phone?: string | null;
+  admin_password?: string;
+}
+
+// PATCH /tenants/{id}
+export interface TenantUpdatePayload {
+  name?: string;
+  email?: string | null;
+  phone?: string | null;
+  status?: "active" | "inactive";
+}
+
 export interface LoginResponse {
   // Real API returns `token`; some docs referenced `access_token`.
   token?: string;

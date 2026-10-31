@@ -26,6 +26,9 @@ import type {
   SeatArrangementType,
   State,
   Tenant,
+  TenantCompany,
+  TenantCreatePayload,
+  TenantUpdatePayload,
   TripManifest,
   UploadResult,
   UploadType,
@@ -188,6 +191,19 @@ export function useDriverTrips(id: number | string | null) {
     },
   });
 }
+
+// --- Tenant companies (super admin only) -----------------------------------
+// Platform-wide management of every tenant, distinct from the authenticated
+// user's own-tenant self-service (useUpdateTenant below).
+export const useTenantCompanies = (params?: ListParams) =>
+  useList<TenantCompany>("tenants", params);
+export const useTenantCompany = (id: number | null) =>
+  useItem<TenantCompany>("tenants", id);
+export const useCreateTenantCompany = () =>
+  useCreate<TenantCompany, TenantCreatePayload>("tenants");
+export const useUpdateTenantCompany = () =>
+  useUpdate<TenantCompany, TenantUpdatePayload>("tenants");
+export const useDeleteTenantCompany = () => useRemove("tenants");
 
 // --- Routes ----------------------------------------------------------------
 export const useRoutes = (params?: ListParams) => useList<Route>("routes", params);

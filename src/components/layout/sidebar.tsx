@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Bus, X } from "lucide-react";
 import { navSections } from "./nav";
+import { useAuthStore, isSuperAdmin } from "@/store/auth";
 import { cn } from "@/lib/utils";
 
 function isActive(href: string, pathname: string, exact?: boolean) {
@@ -13,6 +14,16 @@ function isActive(href: string, pathname: string, exact?: boolean) {
 
 export function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = usePathname();
+  const isSuper = isSuperAdmin(useAuthStore((s) => s.user));
+
+  // Hide super-admin-only items for everyone else, and drop sections that end
+  // up empty (e.g. "Administration" for a plain tenant admin).
+  const sections = navSections
+    .map((section) => ({
+      ...section,
+      items: section.items.filter((item) => !item.superAdmin || isSuper),
+    }))
+    .filter((section) => section.items.length > 0);
 
   return (
     <div className="flex h-full flex-col">
@@ -27,7 +38,7 @@ export function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
       </div>
 
       <nav className="flex-1 space-y-6 overflow-y-auto px-3 py-5">
-        {navSections.map((section, i) => (
+        {sections.map((section, i) => (
           <div key={i}>
             {section.title && (
               <p className="mb-2 px-3 text-[11px] font-semibold uppercase tracking-wider text-slate-500">
