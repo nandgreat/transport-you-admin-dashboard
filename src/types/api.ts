@@ -62,6 +62,7 @@ export interface TenantCompany extends Tenant {
   vehicles_count?: number;
   schedules_count?: number;
   bookings_count?: number;
+  locations_count?: number;
 }
 
 // POST /tenants — create a company and, optionally, its first admin user.
@@ -391,6 +392,7 @@ export interface Route {
 
 export interface Location {
   id: number;
+  tenant_id?: number | null;
   name: string;
   city?: string | null;
   state_id?: number | null;
@@ -398,7 +400,17 @@ export interface Location {
   state?: State | string | null;
   status_id?: number | null;
   address?: string | null;
+  // Optional geolocation point of the station/terminal.
+  latitude?: number | null;
+  longitude?: number | null;
   created_at?: string;
+}
+
+// A reference city belonging to a state (GET /cities).
+export interface City {
+  id: number;
+  state_id: number;
+  name: string;
 }
 
 // A seat arrangement as returned nested on a vehicle type, carrying the

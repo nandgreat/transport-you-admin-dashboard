@@ -15,6 +15,11 @@ import {
   Bus,
   CalendarClock,
   Ticket,
+  MapPin,
+  Eye,
+  Mail,
+  Phone,
+  Calendar,
 } from "lucide-react";
 import {
   useTenantCompanies,
@@ -250,6 +255,7 @@ export default function TenantsPage() {
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<TenantCompany | null>(null);
   const [toDelete, setToDelete] = useState<TenantCompany | null>(null);
+  const [viewing, setViewing] = useState<TenantCompany | null>(null);
 
   // Keep non-super-admins out even if they reach the URL directly.
   useEffect(() => {
@@ -369,8 +375,8 @@ export default function TenantsPage() {
               <THead>
                 <TR>
                   <TH>Company</TH>
-                  <TH>Phone</TH>
                   <TH>Status</TH>
+                  <TH>Locations</TH>
                   <TH>Users</TH>
                   <TH>Vehicles</TH>
                   <TH>Schedules</TH>
@@ -381,18 +387,22 @@ export default function TenantsPage() {
               </THead>
               <TBody>
                 {items.map((t) => (
-                  <TR key={t.id}>
+                  <TR
+                    key={t.id}
+                    className="cursor-pointer"
+                    onClick={() => setViewing(t)}
+                  >
                     <TD>
                       <p className="font-medium text-slate-900">{t.name}</p>
                       {t.email ? (
                         <p className="text-sm text-slate-500">{t.email}</p>
                       ) : null}
                     </TD>
-                    <TD className="text-slate-600">
-                      {t.phone ?? <span className="text-slate-400">—</span>}
-                    </TD>
                     <TD>
                       <StatusBadge status={t.status ?? "active"} />
+                    </TD>
+                    <TD>
+                      <StatCell icon={MapPin} value={t.locations_count} />
                     </TD>
                     <TD>
                       <StatCell icon={Users} value={t.users_count} />
@@ -407,25 +417,14 @@ export default function TenantsPage() {
                       <StatCell icon={Ticket} value={t.bookings_count} />
                     </TD>
                     <TD className="text-slate-500">{formatDate(t.created_at)}</TD>
-                    <TD className="text-right">
-                      <div className="flex items-center justify-end gap-1">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => openEdit(t)}
-                          aria-label="Edit company"
-                        >
-                          <Pencil className="h-4 w-4 text-slate-500" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => setToDelete(t)}
-                          aria-label="Delete company"
-                        >
-                          <Trash2 className="h-4 w-4 text-red-500" />
-                        </Button>
-                      </div>
+                    <TD className="text-right" onClick={(e) => e.stopPropagation()}>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setViewing(t)}
+                      >
+                        <Eye className="h-4 w-4 text-slate-500" /> View
+                      </Button>
                     </TD>
                   </TR>
                 ))}
@@ -442,6 +441,19 @@ export default function TenantsPage() {
       </Card>
 
       <TenantFormModal open={showForm} onClose={closeForm} tenant={editing} />
+
+      <TenantDetailsModal
+        tenant={viewing}
+        onClose={() => setViewing(null)}
+        onEdit={(t) => {
+          setViewing(null);
+          openEdit(t);
+        }}
+        onDelete={(t) => {
+          setViewing(null);
+          setToDelete(t);
+        }}
+      />
 
       <ConfirmDialog
         open={!!toDelete}
@@ -473,5 +485,115 @@ function StatCell({
       <Icon className="h-3.5 w-3.5 text-slate-400" />
       {value ?? 0}
     </span>
+  );
+}
+
+// Read-only details view for a tenant company. Edit and Delete live here — not
+// on the table row — so they're only reachable after opening a company.
+function TenantDetailsModal({
+  tenant,
+  onClose,
+  onEdit,
+  onDelete,
+}: {
+  tenant: TenantCompany | null;
+  onClose: () => void;
+  onEdit: (t: TenantCompany) => void;
+  onDelete: (t: TenantCompany) => void;
+}) {
+  return (
+    <Modal
+      open={!!tenant}
+      onClose={onClose}
+      title={tenant?.name ?? "Company"}
+      description="Transport operator details"
+      footer={
+        tenant ? (
+          <div className="flex w-full items-center justify-between">
+            <Button variant="danger" onClick={() => onDelete(tenant)}>
+              <Trash2 className="h-4 w-4" /> Delete
+            </Button>
+            <div className="flex items-center gap-3">
+              <Button variant="outline" onClick={onClose}>
+                Close
+              </Button>
+              <Button onClick={() => onEdit(tenant)}>
+                <Pencil className="h-4 w-4" /> Edit
+              </Button>
+            </div>
+          </div>
+        ) : null
+      }
+    >
+      {tenant && (
+        <div className="space-y-5">
+          <div className="flex items-center justify-between">
+            <StatusBadge status={tenant.status ?? "active"} />
+            <span className="inline-flex items-center gap-1.5 text-sm text-slate-500">
+              <Calendar className="h-4 w-4 text-slate-400" />
+              Joined {formatDate(tenant.created_at)}
+            </span>
+          </div>
+
+          <dl className="grid grid-cols-1 gap-x-6 gap-y-4 sm:grid-cols-2">
+            <DetailRow icon={Mail} label="Email" value={tenant.email} />
+            <DetailRow icon={Phone} label="Phone" value={tenant.phone} />
+          </dl>
+
+          <div className="border-t border-slate-100 pt-4">
+            <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-slate-400">
+              Operations
+            </p>
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
+              <StatTile icon={MapPin} label="Locations" value={tenant.locations_count} />
+              <StatTile icon={Users} label="Users" value={tenant.users_count} />
+              <StatTile icon={Bus} label="Vehicles" value={tenant.vehicles_count} />
+              <StatTile icon={CalendarClock} label="Schedules" value={tenant.schedules_count} />
+              <StatTile icon={Ticket} label="Bookings" value={tenant.bookings_count} />
+            </div>
+          </div>
+        </div>
+      )}
+    </Modal>
+  );
+}
+
+function DetailRow({
+  icon: Icon,
+  label,
+  value,
+}: {
+  icon: typeof Users;
+  label: string;
+  value?: string | null;
+}) {
+  return (
+    <div className="flex items-start gap-3">
+      <Icon className="mt-0.5 h-4 w-4 shrink-0 text-slate-400" />
+      <div className="min-w-0">
+        <dt className="text-xs text-slate-400">{label}</dt>
+        <dd className="truncate text-sm font-medium text-slate-800">
+          {value || <span className="font-normal text-slate-400">—</span>}
+        </dd>
+      </div>
+    </div>
+  );
+}
+
+function StatTile({
+  icon: Icon,
+  label,
+  value,
+}: {
+  icon: typeof Users;
+  label: string;
+  value?: number;
+}) {
+  return (
+    <div className="rounded-lg border border-slate-200 p-3">
+      <Icon className="h-4 w-4 text-slate-400" />
+      <p className="mt-2 text-lg font-semibold text-slate-900">{value ?? 0}</p>
+      <p className="text-xs text-slate-500">{label}</p>
+    </div>
   );
 }

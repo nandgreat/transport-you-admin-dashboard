@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Plus, Trash2, ArrowRight, CalendarClock, Eye } from "lucide-react";
+import { Plus, Trash2, ArrowRight, CalendarClock, Eye, Pencil } from "lucide-react";
 import { useSchedules, useDeleteSchedule } from "@/hooks/resources";
 import { useQueryFlag } from "@/hooks/useQueryFlag";
 import { PageHeader } from "@/components/ui/page-header";
@@ -13,6 +13,7 @@ import { Pagination } from "@/components/ui/pagination";
 import { EmptyState, LoadingBlock, ErrorState } from "@/components/ui/states";
 import { ConfirmDialog } from "@/components/ui/confirm";
 import { ScheduleFormModal } from "@/components/schedules/schedule-form";
+import { ScheduleEditModal } from "@/components/schedules/schedule-edit";
 import { ScheduleDetailsModal } from "@/components/schedules/schedule-details";
 import { toast } from "@/components/ui/toaster";
 import { apiErrorMessage } from "@/lib/axios";
@@ -41,6 +42,7 @@ export default function SchedulesPage() {
   const [showForm, setShowForm] = useState(false);
   const [toDelete, setToDelete] = useState<Schedule | null>(null);
   const [viewing, setViewing] = useState<Schedule | null>(null);
+  const [editing, setEditing] = useState<Schedule | null>(null);
 
   const { data, isLoading, isError, refetch } = useSchedules({ page, per_page: 15 });
   const del = useDeleteSchedule();
@@ -103,6 +105,7 @@ export default function SchedulesPage() {
                   schedule={s}
                   serial={serialBase + idx + 1}
                   onView={() => setViewing(s)}
+                  onEdit={() => setEditing(s)}
                   onDelete={() => setToDelete(s)}
                 />
               ))}
@@ -207,6 +210,14 @@ export default function SchedulesPage() {
                           >
                             <Eye className="h-4 w-4 text-slate-500" /> View
                           </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => setEditing(s)}
+                            aria-label="Edit schedule"
+                          >
+                            <Pencil className="h-4 w-4 text-slate-500" />
+                          </Button>
                           {!isRecurring && (
                             <Button
                               variant="ghost"
@@ -236,6 +247,8 @@ export default function SchedulesPage() {
       </Card>
 
       <ScheduleFormModal open={showForm} onClose={() => setShowForm(false)} />
+
+      <ScheduleEditModal schedule={editing} onClose={() => setEditing(null)} />
 
       <ScheduleDetailsModal schedule={viewing} onClose={() => setViewing(null)} />
 
@@ -294,11 +307,13 @@ function ScheduleCard({
   schedule: s,
   serial,
   onView,
+  onEdit,
   onDelete,
 }: {
   schedule: Schedule;
   serial: number;
   onView: () => void;
+  onEdit: () => void;
   onDelete: () => void;
 }) {
   const { origin, destination, vehicleImg, isRecurring } = scheduleMeta(s);
@@ -359,6 +374,9 @@ function ScheduleCard({
           <div className="mt-3 flex items-center gap-2 border-t border-slate-100 pt-3">
             <Button variant="outline" size="sm" onClick={onView} className="flex-1">
               <Eye className="h-4 w-4" /> View
+            </Button>
+            <Button variant="outline" size="sm" onClick={onEdit} aria-label="Edit schedule">
+              <Pencil className="h-4 w-4 text-slate-500" />
             </Button>
             {!isRecurring && (
               <Button variant="outline" size="sm" onClick={onDelete} aria-label="Delete schedule">

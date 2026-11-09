@@ -15,6 +15,7 @@ import type {
   Booking,
   BookingStatus,
   BookingSummary,
+  City,
   Driver,
   DriverPayload,
   DriverTripsResult,
@@ -43,6 +44,19 @@ export const useSchedule = (id: number | null) => useItem<Schedule>("schedules",
 export const useCreateSchedule = () => useCreate<Schedule>("schedules");
 export const useUpdateSchedule = () => useUpdate<Schedule>("schedules");
 export const useDeleteSchedule = () => useRemove("schedules");
+
+// Recurring patterns are edited via their own endpoint, but they share the
+// unified /schedules list, so invalidate that on success.
+export function useUpdateScheduleGroup() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, body }: { id: number | string; body: Record<string, unknown> }) => {
+      const { data } = await api.patch<ApiResponse<Schedule>>(`/schedule-groups/${id}`, body);
+      return data.data;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["schedules"] }),
+  });
+}
 
 // --- Scheduled trips -------------------------------------------------------
 // Concrete, dated trips materialised from one-off schedules and recurring
@@ -213,6 +227,13 @@ export const useCreateRoute = () => useCreate<Route>("routes");
 export const useLocations = (params?: ListParams) => useList<Location>("locations", params);
 export const useCreateLocation = () => useCreate<Location>("locations");
 export const useUpdateLocation = () => useUpdate<Location>("locations");
+
+// Reference cities for a state — used to populate the location city dropdown.
+export const useCities = (stateId?: number | string | null) =>
+  useList<City>("cities", stateId ? { state_id: stateId } : {}, {
+    enabled: !!stateId,
+    staleTime: 1000 * 60 * 60,
+  });
 
 // --- Vehicle types / categories -------------------------------------------
 export const useVehicleTypes = (params?: ListParams) =>
