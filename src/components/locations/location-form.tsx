@@ -8,6 +8,7 @@ import { Modal } from "@/components/ui/modal";
 import { Button } from "@/components/ui/button";
 import { Input, Select, Field } from "@/components/ui/input";
 import { Combobox } from "@/components/ui/combobox";
+import { MapPicker, type LatLng } from "@/components/ui/map-picker";
 import { toast } from "@/components/ui/toaster";
 import { apiErrorMessage } from "@/lib/axios";
 import {
@@ -118,6 +119,15 @@ export function LocationFormModal({
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [stateId, cities.data?.items]);
+
+  // The current geolocation point, derived from the lat/lng form fields.
+  const latVal = watch("latitude");
+  const lngVal = watch("longitude");
+  const point = useMemo<LatLng | null>(() => {
+    const la = latVal?.trim() ? Number(latVal) : NaN;
+    const lo = lngVal?.trim() ? Number(lngVal) : NaN;
+    return Number.isFinite(la) && Number.isFinite(lo) ? { lat: la, lng: lo } : null;
+  }, [latVal, lngVal]);
 
   const busy = create.isPending || update.isPending;
 
@@ -258,24 +268,24 @@ export function LocationFormModal({
           <p className="mb-2 text-xs font-medium text-slate-500">
             Station location point <span className="font-normal text-slate-400">(optional)</span>
           </p>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <Field label="Latitude" error={errors.latitude?.message}>
-              <Input
-                type="number"
-                step="any"
-                placeholder="9.0765"
-                {...register("latitude")}
-              />
-            </Field>
-            <Field label="Longitude" error={errors.longitude?.message}>
-              <Input
-                type="number"
-                step="any"
-                placeholder="7.3986"
-                {...register("longitude")}
-              />
-            </Field>
-          </div>
+          <MapPicker
+            value={point}
+            onChange={(p) => {
+              setValue("latitude", p ? String(p.lat) : "", { shouldValidate: true });
+              setValue("longitude", p ? String(p.lng) : "", { shouldValidate: true });
+            }}
+            onResolveAddress={(addr) => {
+              // Fill the address from the searched place only when it's empty.
+              if (!getValues("address")?.trim()) {
+                setValue("address", addr, { shouldValidate: true });
+              }
+            }}
+          />
+          {(errors.latitude || errors.longitude) && (
+            <p className="mt-1 text-xs font-medium text-red-500">
+              {errors.latitude?.message || errors.longitude?.message}
+            </p>
+          )}
         </div>
 
         {isEdit && (

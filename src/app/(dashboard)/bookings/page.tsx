@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Plus, Ticket, Check, X, ArrowRight, Eye, Repeat, Users } from "lucide-react";
+import { Plus, Ticket, Check, X, ArrowRight, Eye, Repeat, Users, Search } from "lucide-react";
 import {
   useBookings,
   useUpdateBookingStatus,
@@ -16,6 +16,7 @@ import { Button } from "@/components/ui/button";
 import { Pagination } from "@/components/ui/pagination";
 import { EmptyState, LoadingBlock, ErrorState } from "@/components/ui/states";
 import { ConfirmDialog } from "@/components/ui/confirm";
+import { Input } from "@/components/ui/input";
 import { BookingFormModal } from "@/components/bookings/booking-form";
 import { BookingDetailsModal } from "@/components/bookings/booking-details";
 import { toast } from "@/components/ui/toaster";
@@ -37,9 +38,27 @@ export default function BookingsPage() {
   const [showForm, setShowForm] = useState(false);
   const [toCancel, setToCancel] = useState<Booking | null>(null);
   const [viewing, setViewing] = useState<Booking | null>(null);
+  const [search, setSearch] = useState("");
+  const [debounced, setDebounced] = useState("");
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
+
+  // Debounce the passenger search so we don't refetch on every keystroke.
+  useEffect(() => {
+    const t = setTimeout(() => setDebounced(search.trim()), 300);
+    return () => clearTimeout(t);
+  }, [search]);
+
+  // Any filter change returns to the first page.
+  useEffect(() => {
+    setPage(1);
+  }, [debounced, dateFrom, dateTo]);
 
   const params: Record<string, string | number> = { page, per_page: 15 };
   if (tab !== "all") params.status = tab;
+  if (debounced) params.passenger = debounced;
+  if (dateFrom) params.date_from = dateFrom;
+  if (dateTo) params.date_to = dateTo;
 
   const { data, isLoading, isError, refetch } = useBookings(params);
   const updateStatus = useUpdateBookingStatus();
@@ -103,6 +122,52 @@ export default function BookingsPage() {
             {t.label}
           </button>
         ))}
+      </div>
+
+      {/* Passenger search + travel-date range */}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
+        <div className="relative flex-1">
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+          <Input
+            placeholder="Search by passenger name"
+            className="pl-9"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+        </div>
+        <div className="flex items-end gap-3">
+          <div>
+            <label className="mb-1 block text-xs font-medium text-slate-500">Travel from</label>
+            <Input
+              type="date"
+              value={dateFrom}
+              onChange={(e) => setDateFrom(e.target.value)}
+              className="w-[9.5rem]"
+            />
+          </div>
+          <div>
+            <label className="mb-1 block text-xs font-medium text-slate-500">Travel to</label>
+            <Input
+              type="date"
+              value={dateTo}
+              min={dateFrom || undefined}
+              onChange={(e) => setDateTo(e.target.value)}
+              className="w-[9.5rem]"
+            />
+          </div>
+          {(search || dateFrom || dateTo) && (
+            <Button
+              variant="outline"
+              onClick={() => {
+                setSearch("");
+                setDateFrom("");
+                setDateTo("");
+              }}
+            >
+              Clear
+            </Button>
+          )}
+        </div>
       </div>
 
       <Card>

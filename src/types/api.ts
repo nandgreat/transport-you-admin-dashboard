@@ -278,6 +278,17 @@ export interface TripManifest {
   passengers: TripPassenger[];
 }
 
+// Seat availability for a recurring pattern on a specific date
+// (GET /trips/recurring/{group}/seats?travel_date=).
+export interface OccurrenceSeats {
+  schedule_group_id: number;
+  travel_date: string;
+  seat_selection_enabled: boolean;
+  capacity?: number | null;
+  available_seats?: number;
+  seats: { number: number; status: "available" | "unavailable" }[];
+}
+
 export type BookingStatus = "pending" | "confirmed" | "cancelled";
 
 export interface Passenger {
@@ -326,10 +337,20 @@ export interface Booking {
 // GET /bookings/summary — dashboard aggregates.
 export interface BookingSummary {
   total_bookings: number;
+  pending_bookings?: number;
+  confirmed_bookings?: number;
+  cancelled_bookings?: number;
   // Value of live bookings (excludes cancelled & expired).
   total_amount: number | string;
   // Sum of confirmed bookings only (realised revenue).
   confirmed_amount: number | string;
+}
+
+// A point on the dashboard revenue chart (GET /bookings/revenue-series).
+export interface RevenueSeriesPoint {
+  period: string;
+  revenue: number;
+  bookings: number;
 }
 
 export interface Vehicle {
@@ -353,13 +374,22 @@ export type DriverStatus = "active" | "inactive";
 // Operational availability, distinct from the active/inactive account status.
 export type DriverAvailability = "available" | "on_trip" | "unavailable";
 
+export type Gender = "male" | "female" | "other";
+
 export interface Driver {
   id: number;
   tenant_id?: number;
   name: string;
+  gender?: Gender | null;
   phone?: string | null;
   email?: string | null;
   licence_number?: string | null;
+  id_number?: string | null;
+  guarantor_name?: string | null;
+  guarantor_phone?: string | null;
+  guarantor_home_address?: string | null;
+  guarantor_work_address?: string | null;
+  photo_url?: string | null;
   status: DriverStatus;
   availability: DriverAvailability;
   // Running count of trips this driver has completed (system-managed).
@@ -369,9 +399,15 @@ export interface Driver {
 
 export interface DriverPayload {
   name: string;
+  gender?: Gender | null;
   phone?: string | null;
   email?: string | null;
   licence_number?: string | null;
+  id_number?: string | null;
+  guarantor_name?: string | null;
+  guarantor_phone?: string | null;
+  guarantor_home_address?: string | null;
+  guarantor_work_address?: string | null;
   status?: DriverStatus;
   availability?: DriverAvailability;
 }
@@ -471,6 +507,7 @@ export type UploadType =
   | "routes"
   | "locations"
   | "schedules"
+  | "drivers"
   | "misc";
 
 export interface UploadResult {

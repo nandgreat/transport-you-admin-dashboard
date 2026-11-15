@@ -20,6 +20,8 @@ import type {
   DriverPayload,
   DriverTripsResult,
   Location,
+  OccurrenceSeats,
+  RevenueSeriesPoint,
   Route,
   Schedule,
   ScheduledTrip,
@@ -145,12 +147,45 @@ export const useBookings = (params?: ListParams) => useList<Booking>("bookings",
 export const useBooking = (id: number | null) => useItem<Booking>("bookings", id);
 export const useCreateBooking = () => useCreate<Booking>("bookings");
 
-// Aggregate booking totals for the dashboard.
-export function useBookingSummary() {
-  return useQuery<BookingSummary>({
-    queryKey: ["bookings", "summary"],
+// Seat availability for a recurring pattern on a chosen travel date.
+export function useRecurringSeats(groupId: number | null, travelDate: string | null) {
+  return useQuery<OccurrenceSeats>({
+    queryKey: ["recurring-seats", groupId, travelDate],
+    enabled: !!groupId && !!travelDate,
+    retry: false,
     queryFn: async () => {
-      const { data } = await api.get<ApiResponse<BookingSummary>>("/bookings/summary");
+      const { data } = await api.get<ApiResponse<OccurrenceSeats>>(
+        `/trips/recurring/${groupId}/seats`,
+        { params: { travel_date: travelDate } }
+      );
+      return data.data;
+    },
+  });
+}
+
+// Aggregate booking totals for the dashboard, optionally scoped to a
+// created-at date range.
+export function useBookingSummary(params?: { date_from?: string; date_to?: string }) {
+  return useQuery<BookingSummary>({
+    queryKey: ["bookings", "summary", params ?? {}],
+    queryFn: async () => {
+      const { data } = await api.get<ApiResponse<BookingSummary>>("/bookings/summary", {
+        params,
+      });
+      return data.data;
+    },
+  });
+}
+
+// Revenue time-series for the dashboard chart (day / month / year).
+export function useRevenueSeries(group: "day" | "month" | "year") {
+  return useQuery<RevenueSeriesPoint[]>({
+    queryKey: ["bookings", "revenue-series", group],
+    queryFn: async () => {
+      const { data } = await api.get<ApiResponse<RevenueSeriesPoint[]>>(
+        "/bookings/revenue-series",
+        { params: { group } }
+      );
       return data.data;
     },
   });
